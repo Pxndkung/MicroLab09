@@ -1,55 +1,59 @@
-# MicroLab09
-T2CON   EQU     0C8H
-RCAP2L  EQU     0CAH
-RCAP2H  EQU     0CBH
-
-        ORG     0000H
+	ORG     0000H
         JMP     0100H
 
         ORG     0100H
 START:
         MOV     SP, #3FH
         CLR     EA
+        SETB    P1.0
+        JB      P1.0, $
+        CALL    DELAY_500MS
 
-        MOV     TMOD, #20H 
+        MOV     TMOD, #21H
         MOV     SCON, #50H
         MOV     TH1, #0F3H
         SETB    TR1
 
-MAIN_LOOP:
-        CLR     RI
-        JNB     RI, $
-        MOV     A, SBUF
+        MOV     R0, #10
+SEND_10_LINES:
+        MOV     DPTR, #MY_INFO
+        CALL    SEND_STRING
+        CALL    DELAY_500MS
+        DJNZ    R0, SEND_10_LINES
 
-_IS_ASCII_A:
-        CJNE    A, #'A', _IS_ASCII_B
-        MOV     A, #0AH
-        CALL    DISPLAY
-        SETB    P2.7
-        JMP     MAIN_LOOP
+        MOV     DPTR, #WANT_A
+        CALL    SEND_STRING
+        
+        JMP     $
 
-_IS_ASCII_B:
-        CJNE    A, #'B', _IS_ASCII_ETC
-        MOV     A, #0BH
-        CALL    DISPLAY
-        CLR     P2.7
-        JMP     MAIN_LOOP
-
-_IS_ASCII_ETC:
-        NOP
-        JMP     MAIN_LOOP
-
-DISPLAY:
-        MOV     DPTR, #SEG_TAB
+SEND_STRING:
+        CLR     A
         MOVC    A, @A+DPTR
-        CPL     A
-        MOV     P0, A
-        CLR     P1.4
-        CLR     P1.5
+        JZ      END_STRING
+        MOV     SBUF, A
+WAIT_TI:
+        JNB     TI, WAIT_TI
+        CLR     TI
+        INC     DPTR
+        JMP     SEND_STRING
+END_STRING:
         RET
 
-SEG_TAB:
-        DB      03FH, 006H, 05BH, 04FH, 066H, 06DH, 07DH, 007H
-        DB      07FH, 06FH, 077H, 07CH, 039H, 05EH, 079H, 071H
+DELAY_500MS:
+        MOV     R7, #5
+DLY_OUTER:
+        MOV     R6, #200
+DLY_INNER:
+        MOV     R5, #250
+DLY_LOOP:
+        DJNZ    R5, DLY_LOOP
+        DJNZ    R6, DLY_INNER
+        DJNZ    R7, DLY_OUTER
+        RET
+
+MY_INFO: 
+        DB 'B6729943 Chokchai Chokkoed',0AH, 0
+WANT_A:  
+        DB 'I Want A', 0DH,0
 
         END
